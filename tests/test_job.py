@@ -49,9 +49,9 @@ class TestJob(RQTestCase):
         self.assertIsNone(job.instance)
 
         # Job data is set...
-        self.assertEqual(job.func, some_calculation)
-        self.assertEqual(job.args, (3, 4))
-        self.assertEqual(job.kwargs, {'z': 2})
+        self.assertEquals(job.func, some_calculation)
+        self.assertEquals(job.args, (3, 4))
+        self.assertEquals(job.kwargs, {'z': 2})
 
         # ...but metadata is not
         self.assertIsNone(job.origin)
@@ -64,18 +64,39 @@ class TestJob(RQTestCase):
         job = Job.create(func=n.div, args=(4,))
 
         # Job data is set
-        self.assertEqual(job.func, n.div)
-        self.assertEqual(job.instance, n)
-        self.assertEqual(job.args, (4,))
+        self.assertEquals(job.func, n.div)
+        self.assertEquals(job.instance, n)
+        self.assertEquals(job.args, (4,))
 
     def test_create_job_from_string_function(self):
         """Creation of jobs using string specifier."""
         job = Job.create(func='tests.fixtures.say_hello', args=('World',))
 
         # Job data is set
-        self.assertEqual(job.func, say_hello)
+        self.assertEquals(job.func, say_hello)
         self.assertIsNone(job.instance)
-        self.assertEqual(job.args, ('World',))
+        self.assertEquals(job.args, ('World',))
+
+    def test_job_properties_set_data_property(self):
+        """Data property gets derived from the job tuple."""
+        job = Job()
+        job.func_name = 'foo'
+        fname, instance, args, kwargs = loads(job.data)
+
+        self.assertEquals(fname, job.func_name)
+        self.assertEquals(instance, None)
+        self.assertEquals(args, ())
+        self.assertEquals(kwargs, {})
+
+    def test_data_property_sets_job_properties(self):
+        """Job tuple gets derived lazily from data property."""
+        job = Job()
+        job.data = dumps(('foo', None, (1, 2, 3), {'bar': 'qux'}))
+
+        self.assertEquals(job.func_name, 'foo')
+        self.assertEquals(job.instance, None)
+        self.assertEquals(job.args, (1, 2, 3))
+        self.assertEquals(job.kwargs, {'bar': 'qux'})
 
     def test_job_properties_set_data_property(self):
         """Data property gets derived from the job tuple."""
@@ -103,13 +124,13 @@ class TestJob(RQTestCase):
         job = Job.create(func=some_calculation, args=(3, 4), kwargs=dict(z=2))
 
         # Saving creates a Redis hash
-        self.assertEqual(self.testconn.exists(job.key), False)
+        self.assertEquals(self.testconn.exists(job.key), False)
         job.save()
-        self.assertEqual(self.testconn.type(job.key), b'hash')
+        self.assertEquals(self.testconn.type(job.key), b'hash')
 
         # Saving writes pickled job data
         unpickled_data = loads(self.testconn.hget(job.key, 'data'))
-        self.assertEqual(unpickled_data[0], 'tests.fixtures.some_calculation')
+        self.assertEquals(unpickled_data[0], 'tests.fixtures.some_calculation')
 
     def test_fetch(self):
         """Fetching jobs."""
@@ -121,12 +142,12 @@ class TestJob(RQTestCase):
 
         # Fetch returns a job
         job = Job.fetch('some_id')
-        self.assertEqual(job.id, 'some_id')
-        self.assertEqual(job.func_name, 'tests.fixtures.some_calculation')
+        self.assertEquals(job.id, 'some_id')
+        self.assertEquals(job.func_name, 'tests.fixtures.some_calculation')
         self.assertIsNone(job.instance)
-        self.assertEqual(job.args, (3, 4))
-        self.assertEqual(job.kwargs, dict(z=2))
-        self.assertEqual(job.created_at, datetime(2012, 2, 7, 22, 13, 24))
+        self.assertEquals(job.args, (3, 4))
+        self.assertEquals(job.kwargs, dict(z=2))
+        self.assertEquals(job.created_at, datetime(2012, 2, 7, 22, 13, 24))
 
     def test_persistence_of_empty_jobs(self):  # noqa
         """Storing empty jobs should fail."""
@@ -147,7 +168,7 @@ class TestJob(RQTestCase):
             utcformat(expected_date))
 
         # ... and no other keys are stored
-        self.assertEqual(
+        self.assertEquals(
             sorted(self.testconn.hkeys(job.key)),
             [b'created_at', b'data', b'description'])
 
@@ -158,14 +179,14 @@ class TestJob(RQTestCase):
         job = Job.create(func=some_calculation, depends_on=parent_job)
         job.save()
         stored_job = Job.fetch(job.id)
-        self.assertEqual(stored_job._dependency_ids, [parent_job.id])
-        self.assertEqual(stored_job.dependencies, [parent_job])
+        self.assertEquals(stored_job._dependency_ids, [parent_job.id])
+        self.assertEquals(stored_job.dependencies, [parent_job])
 
         job = Job.create(func=some_calculation, depends_on=parent_job.id)
         job.save()
         stored_job = Job.fetch(job.id)
-        self.assertEqual(stored_job._dependency_ids, [parent_job.id])
-        self.assertEqual(stored_job.dependencies, [parent_job])
+        self.assertEquals(stored_job._dependency_ids, [parent_job.id])
+        self.assertEquals(stored_job.dependencies, [parent_job])
 
     def test_store_then_fetch(self):
         """Store, then fetch."""
@@ -173,12 +194,12 @@ class TestJob(RQTestCase):
         job.save()
 
         job2 = Job.fetch(job.id)
-        self.assertEqual(job.func, job2.func)
-        self.assertEqual(job.args, job2.args)
-        self.assertEqual(job.kwargs, job2.kwargs)
+        self.assertEquals(job.func, job2.func)
+        self.assertEquals(job.args, job2.args)
+        self.assertEquals(job.kwargs, job2.kwargs)
 
         # Mathematical equation
-        self.assertEqual(job, job2)
+        self.assertEquals(job, job2)
 
     def test_fetching_can_fail(self):
         """Fetching fails for non-existing jobs."""
@@ -222,35 +243,35 @@ class TestJob(RQTestCase):
         job.save()
 
         raw_data = self.testconn.hget(job.key, 'meta')
-        self.assertEqual(loads(raw_data)['foo'], 'bar')
+        self.assertEquals(loads(raw_data)['foo'], 'bar')
 
         job2 = Job.fetch(job.id)
-        self.assertEqual(job2.meta['foo'], 'bar')
+        self.assertEquals(job2.meta['foo'], 'bar')
 
     def test_result_ttl_is_persisted(self):
         """Ensure that job's result_ttl is set properly"""
         job = Job.create(func=say_hello, args=('Lionel',), result_ttl=10)
         job.save()
         Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job.result_ttl, 10)
+        self.assertEquals(job.result_ttl, 10)
 
         job = Job.create(func=say_hello, args=('Lionel',))
         job.save()
         Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job.result_ttl, None)
+        self.assertEquals(job.result_ttl, None)
 
     def test_description_is_persisted(self):
         """Ensure that job's custom description is set properly"""
         job = Job.create(func=say_hello, args=('Lionel',), description=u'Say hello!')
         job.save()
         Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job.description, u'Say hello!')
+        self.assertEquals(job.description, u'Say hello!')
 
         # Ensure job description is constructed from function call string
         job = Job.create(func=say_hello, args=('Lionel',))
         job.save()
         Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job.description, "tests.fixtures.say_hello('Lionel')")
+        self.assertEquals(job.description, "tests.fixtures.say_hello('Lionel')")
 
     def test_job_access_within_job_function(self):
         """The current job is accessible within the job function."""
@@ -262,15 +283,15 @@ class TestJob(RQTestCase):
         job = Job.create(func=access_self)
         job.save()
         id = job.perform()
-        self.assertEqual(job.id, id)
-        self.assertEqual(job.func, access_self)
+        self.assertEquals(job.id, id)
+        self.assertEquals(job.func, access_self)
 
         # Ensure that get_current_job also works from within synchronous jobs
         queue = Queue(async=False)
         job = queue.enqueue(access_self)
         id = job.perform()
-        self.assertEqual(job.id, id)
-        self.assertEqual(job.func, access_self)
+        self.assertEquals(job.id, id)
+        self.assertEquals(job.func, access_self)
 
     def test_get_ttl(self):
         """Getting job TTL."""
@@ -278,12 +299,12 @@ class TestJob(RQTestCase):
         default_ttl = 2
         job = Job.create(func=say_hello, result_ttl=job_ttl)
         job.save()
-        self.assertEqual(job.get_ttl(default_ttl=default_ttl), job_ttl)
-        self.assertEqual(job.get_ttl(), job_ttl)
+        self.assertEquals(job.get_ttl(default_ttl=default_ttl), job_ttl)
+        self.assertEquals(job.get_ttl(), job_ttl)
         job = Job.create(func=say_hello)
         job.save()
-        self.assertEqual(job.get_ttl(default_ttl=default_ttl), default_ttl)
-        self.assertEqual(job.get_ttl(), None)
+        self.assertEquals(job.get_ttl(default_ttl=default_ttl), default_ttl)
+        self.assertEquals(job.get_ttl(), None)
 
     def test_cleanup(self):
         """Test that jobs and results are expired properly."""
@@ -292,11 +313,11 @@ class TestJob(RQTestCase):
 
         # Jobs with negative TTLs don't expire
         job.cleanup(ttl=-1)
-        self.assertEqual(self.testconn.ttl(job.key), -1)
+        self.assertEquals(self.testconn.ttl(job.key), -1)
 
         # Jobs with positive TTLs are eventually deleted
         job.cleanup(ttl=100)
-        self.assertEqual(self.testconn.ttl(job.key), 100)
+        self.assertEquals(self.testconn.ttl(job.key), 100)
 
         # Jobs with 0 TTL are immediately deleted
         job.cleanup(ttl=0)
@@ -310,13 +331,13 @@ class TestJob(RQTestCase):
         job1.save()
         job2 = Job.create(func=say_hello, depends_on=[job1, finished_job])
         job2.register_dependencies([job1])
-        self.assertEqual(
+        self.assertEquals(
             list(map(as_text, self.testconn.smembers(Job.reverse_dependencies_key_for(job1.id)))),
             [job2.id]
         )
         # Should not register itself as being dependent on a finished job
-        self.assertEqual(self.testconn.smembers(Job.reverse_dependencies_key_for(finished_job.id)), set())
-        self.assertEqual(self.testconn.smembers(Job.reverse_dependencies_key_for(job2.id)), set())
+        self.assertEquals(self.testconn.smembers(Job.reverse_dependencies_key_for(finished_job.id)), set())
+        self.assertEquals(self.testconn.smembers(Job.reverse_dependencies_key_for(job2.id)), set())
 
 
     def test_cancel(self):

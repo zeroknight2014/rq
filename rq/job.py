@@ -8,9 +8,8 @@ from .local import LocalStack
 from .connections import resolve_connection
 from .exceptions import UnpickleError, NoSuchJobError
 from .utils import import_attribute, utcnow, utcformat, utcparse
-from rq.compat import text_type, decode_redis_hash, as_text, as_bytes
-
 from redis import WatchError
+from rq.compat import text_type, decode_redis_hash, as_text, as_bytes
 
 
 def enum(name, *sequential, **named):
