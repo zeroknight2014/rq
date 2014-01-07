@@ -50,6 +50,9 @@ if PY2:
     def as_text(v):
         return v
 
+    def as_bytes(v):
+        return v
+
     def decode_redis_hash(h):
         return h
 
@@ -64,6 +67,16 @@ else:
             return v.decode('utf-8')
         elif isinstance(v, str):
             return v
+        else:
+            raise ValueError('Unknown type %r' % type(v))
+
+    def as_bytes(v):
+        if v is None:
+            return None
+        elif isinstance(v, bytes):
+            return v
+        elif isinstance(v, str):
+            return v.encode('utf-8')
         else:
             raise ValueError('Unknown type %r' % type(v))
 
